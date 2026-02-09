@@ -1,0 +1,30 @@
+[user]
+name = "Jeremy Moore"
+email = "j.moore@ngrok.com"
+
+[user.jeremymoore]
+name = "Jeremy Moore"
+email = "jeremymoore@gmail.com"
+
+[ui]
+editor = "vim"
+default-command = "log"
+diff-editor = ":builtin"
+diff-formatter = ":git"
+pager = ["delta"]
+
+[git]
+push-new-bookmarks = true
+
+[revsets]
+log = "@ | ancestors(trunk()..((visible_heads() & mine()) | bookmarks()), 2) | trunk()"
+
+[revset-aliases]
+_ = 'all:roots(main..(bookmarks() & mine()))'
+'closest_bookmark(to)' = 'heads(::to & bookmarks())'
+
+[aliases]
+tug = ["bookmark", "move", "--from", "closest_bookmark(@-)", "--to", "@-"]
+s = ["squash"]
+si = ["squash", "--interactive"]
+flatten = ["abandon", "empty() & (trunk()..ancestors(@))"]

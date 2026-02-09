@@ -1,0 +1,14 @@
+function ne() {
+  export NGROK_ENV="${1:-local}"
+}
+
+alias gitclean='git branch -d $(git branch --merged=main | grep -v main) && git fetch --prune'
+alias fixssh='export SSH_AUTH_SOCK=$(ls -t /tmp/ssh-**/* | head -1)'
+
+export PATH="/opt/ngrok/.cache/cargo-home.ypzyxalwj8ky2fzscvxwf3ar4hi8m4w2/bin:$PATH"
+
+eval "$(~/.local/bin/mise activate bash)"
+eval "$(starship init bash)"
+
+source <(jj util completion bash)
+export ND_SSO_NO_BROWSER=true

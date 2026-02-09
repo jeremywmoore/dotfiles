@@ -1,0 +1,9 @@
+[tools]
+cargo-binstall = "latest"
+jj = "latest"
+"npm:jj-stack" = "latest"
+starship = "latest"
+zellij = "latest"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
