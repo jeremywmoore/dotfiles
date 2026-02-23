@@ -1,3 +1,10 @@
 [tools]
+cargo-binstall = "latest"
 jj = "latest"
+node = "latest"
+"npm:jj-stack" = "latest"
 starship = "latest"
+tmux = "latest"
+
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
