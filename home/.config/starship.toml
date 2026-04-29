@@ -66,3 +66,12 @@ disabled = true
 when = true
 command = "jj root >/dev/null 2>&1 || starship module git_branch"
 description = "Only show git_branch if we're not in a jj repo"
+
+# Indicate when ~/dotfiles has uncommitted changes — fast (`git status` on a
+# tiny repo) and silent when clean.
+[custom.dotfiles]
+description = "Uncommitted changes in ~/dotfiles"
+command = "echo '●'"
+when = '''[ -n "$(git -C $HOME/dotfiles status --porcelain 2>/dev/null)" ]'''
+format = "[$output](yellow) "
+shell = ["sh", "--norc", "--noprofile"]

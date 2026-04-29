@@ -1,42 +1,38 @@
 #!/usr/bin/env bash
-#
-# Copyright (c) 2020 Tom Payne
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+set -euo pipefail
+cd "$(dirname "$0")"
 
-set -e
-
-if [ ! "$(command -v chezmoi)" ]; then
-  bin_dir="$HOME/.local/bin"
-  chezmoi="$bin_dir/chezmoi"
-  if [ "$(command -v curl)" ]; then
-    sh -c "$(curl -fsSL https://chezmoi.io/get)" -- -b "$bin_dir"
-  elif [ "$(command -v wget)" ]; then
-    sh -c "$(wget -qO- https://chezmoi.io/get)" -- -b "$bin_dir"
-  else
-    echo "To install chezmoi, you must have curl or wget installed." >&2
-    exit 1
-  fi
-else
-  chezmoi=chezmoi
+# Bootstrap nix if not present (Determinate Systems installer; --determinate
+# flag pulls Determinate Nix specifically). Interactive — prompts for sudo.
+if ! command -v nix >/dev/null 2>&1; then
+  echo "nix not found — installing Determinate Nix…"
+  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+    | sh -s -- install --determinate
+  echo "Nix installed. Open a new shell and re-run ./install.sh to finish."
+  exit 0
 fi
 
-# POSIX way to get script's dir: https://stackoverflow.com/a/29834779/12156188
-script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
-"$chezmoi" init --source="$script_dir" --apply
+# Symlink home/* into $HOME (relative symlinks survive repo relocation)
+find home -type f | while read -r src; do
+  dest="$HOME/${src#home/}"
+  mkdir -p "$(dirname "$dest")"
+  ln -srfv "$PWD/$src" "$dest"
+done
+
+# (Re)install nix profile from the flake
+nix profile remove dotfiles 2>/dev/null || true
+nix profile remove flake 2>/dev/null || true
+nix profile install "$PWD/flake"
+
+# Set default shell to zsh if it isn't already.
+zsh_path="$(command -v zsh 2>/dev/null || true)"
+if [ -z "$zsh_path" ]; then
+  echo "warning: zsh not found in PATH; default shell unchanged" >&2
+elif [ "$(getent passwd "$USER" | cut -d: -f7)" != "$zsh_path" ]; then
+  if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+    echo "$zsh_path missing from /etc/shells; adding (sudo)…"
+    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+  fi
+  chsh -s "$zsh_path"
+  echo "Default shell set to $zsh_path. Open a new login session for it to take effect."
+fi
