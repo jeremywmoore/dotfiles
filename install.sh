@@ -22,7 +22,7 @@ done
 # (Re)install nix profile from the flake
 nix profile remove dotfiles 2>/dev/null || true
 nix profile remove flake 2>/dev/null || true
-nix profile install "$PWD/flake"
+nix profile add "$PWD/flake"
 
 # Set default shell to zsh if it isn't already.
 zsh_path="$(command -v zsh 2>/dev/null || true)"
