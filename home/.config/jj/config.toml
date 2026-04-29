@@ -1,0 +1,58 @@
+[user]
+name = "Jeremy Moore"
+email = "j.moore@ngrok.com"
+
+[user.jeremymoore]
+name = "Jeremy Moore"
+email = "jeremymoore@gmail.com"
+
+[ui]
+editor = "vim"
+default-command = "log"
+diff-editor = ":builtin"
+diff-formatter = ":git"
+pager = ["delta"]
+
+[git]
+
+[revsets]
+log = "@ | ancestors(trunk()..((visible_heads() & mine()) | bookmarks()), 2) | trunk()"
+
+[revset-aliases]
+_ = 'all:roots(main..(bookmarks() & mine()))'
+'closest_bookmark(to)' = 'heads(::to & bookmarks())'
+
+[template-aliases]
+'log_square(commit)' = '''
+  if(commit.root(),
+    format_root_commit(commit),
+    label(
+      separate(" ",
+        if(commit.current_working_copy(), "working_copy"),
+        if(commit.immutable(), "immutable", "mutable"),
+        if(commit.conflict(), "conflicted"),
+      ),
+      truncate_end(48,
+        separate(" ",
+          commit.change_id().shortest(),
+          commit.committer().timestamp().format("%m-%d"),
+          if(commit.bookmarks(), truncate_end(12, commit.bookmarks().map(|b| b.name()).join(","), "…")),
+          if(commit.empty(), label("empty", "(empty)")),
+          if(commit.description(), commit.description().first_line(), label("empty", description_placeholder)),
+        ),
+        "…",
+      ),
+    ),
+  )
+'''
+log_square = 'log_square(self)'
+
+[aliases]
+tug = ["bookmark", "move", "--from", "closest_bookmark(@-)", "--to", "@-"]
+s = ["squash"]
+si = ["squash", "--interactive"]
+flatten = ["abandon", "empty() & (trunk()..ancestors(@))"]
+sl = ["log", "-T", "log_square"]
+
+[remotes.origin]
+auto-track-bookmarks = "jmoore/*"
