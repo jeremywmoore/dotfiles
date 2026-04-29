@@ -74,4 +74,3 @@ description = "Uncommitted changes in ~/dotfiles"
 command = "echo '●'"
 when = '''[ -n "$(git -C $HOME/dotfiles status --porcelain 2>/dev/null)" ]'''
 format = "[$output](yellow) "
-shell = ["sh", "--norc", "--noprofile"]
