@@ -74,9 +74,9 @@ fi
 if command -v nix >/dev/null 2>&1; then
   nix profile remove dotfiles 2>/dev/null || true
   nix profile remove flake 2>/dev/null || true
-  if ! nix profile add "$PWD/flake"; then
+  if ! nix profile add "$PWD"; then
     echo "warning: 'nix profile add' failed." >&2
-    echo "  If it's a daemon issue: sudo nix-daemon --daemon & ; nix profile add $PWD/flake" >&2
+    echo "  If it's a daemon issue: sudo nix-daemon & ; nix profile add $PWD" >&2
   fi
 else
   echo "warning: nix not on PATH after install; open a fresh shell and re-run ./install.sh" >&2

@@ -13,7 +13,7 @@ bump:
 
 # Apply current flake.nix selection without bumping pins
 apply:
-    nix profile upgrade flake
+    nix profile upgrade dotfiles
 
 # Bump only one input (e.g. `just bump-input nixpkgs`)
 bump-input input:
