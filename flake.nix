@@ -5,9 +5,10 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     jj-domino.url = "github:zombiezen/jj-domino";
+    interactive-nix-search.url = "github:omarjatoi/interactive-nix-search";
   };
 
-  outputs = { self, nixpkgs, flake-utils, jj-domino }:
+  outputs = { self, nixpkgs, flake-utils, jj-domino, interactive-nix-search }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
@@ -28,6 +29,7 @@
             zellij
             starship
             jj-domino.packages.${system}.default
+            interactive-nix-search.packages.${system}.default
           ];
         };
       });
