@@ -49,11 +49,14 @@ fi
 # (Codespaces, plain Docker) don't auto-start it, so `nix profile add`
 # fails with "cannot connect to socket".
 if command -v nix >/dev/null 2>&1 && ! nix store ping >/dev/null 2>&1; then
-  if command -v nix-daemon >/dev/null 2>&1; then
+  # Resolve the full path: nix-daemon usually isn't on root's PATH (it
+  # lives under /nix/var/nix/profiles/default/bin), and sudo searches its
+  # own PATH unless given an absolute path.
+  nix_daemon_path="$(command -v nix-daemon 2>/dev/null || true)"
+  if [ -n "$nix_daemon_path" ]; then
     echo "Starting nix-daemon in background (no systemd — common in containers)…"
-    # Run daemon detached, log to /tmp so failures are diagnosable.
     nix_daemon_log=/tmp/nix-daemon.log
-    sudo -b sh -c "nix-daemon >$nix_daemon_log 2>&1"
+    sudo -b sh -c "$nix_daemon_path >$nix_daemon_log 2>&1"
     # Poll up to 10s for the socket to appear.
     for _ in 1 2 3 4 5 6 7 8 9 10; do
       [ -S /nix/var/nix/daemon-socket/socket ] && break
