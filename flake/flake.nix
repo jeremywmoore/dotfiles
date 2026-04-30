@@ -21,6 +21,7 @@
           name = "personal-tools";
           paths = with pkgs; [
             claude-code
+            delta            # syntax-highlighting pager for diffs
             jujutsu          # jj
             just
             tmux
