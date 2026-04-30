@@ -18,7 +18,11 @@ elif [ "$(getent passwd "$USER" | cut -d: -f7)" != "$zsh_path" ]; then
     echo "$zsh_path missing from /etc/shells; adding (sudo)…"
     echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
   fi
-  if chsh -s "$zsh_path"; then
+  # `chsh` (without sudo) authenticates the user via PAM and prompts for a
+  # password — which is awkward on devboxes / Codespaces where the user has
+  # passwordless sudo but no actual password. Run chsh as root targeting
+  # the user explicitly to skip the PAM auth.
+  if sudo chsh -s "$zsh_path" "$USER"; then
     echo "Default shell set to $zsh_path. Open a new login session to use it."
   else
     echo "warning: chsh failed; default shell unchanged" >&2
