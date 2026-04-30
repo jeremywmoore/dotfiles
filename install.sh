@@ -50,12 +50,19 @@ fi
 # fails with "cannot connect to socket".
 if command -v nix >/dev/null 2>&1 && ! nix store ping >/dev/null 2>&1; then
   if command -v nix-daemon >/dev/null 2>&1; then
-    echo "Starting nix-daemon (no systemd — common in containers)…"
-    sudo nix-daemon --daemon >/dev/null 2>&1 &
-    for _ in 1 2 3 4 5; do
+    echo "Starting nix-daemon in background (no systemd — common in containers)…"
+    # Run daemon detached, log to /tmp so failures are diagnosable.
+    nix_daemon_log=/tmp/nix-daemon.log
+    sudo -b sh -c "nix-daemon >$nix_daemon_log 2>&1"
+    # Poll up to 10s for the socket to appear.
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
       [ -S /nix/var/nix/daemon-socket/socket ] && break
       sleep 1
     done
+    if ! nix store ping >/dev/null 2>&1; then
+      echo "  warning: nix-daemon didn't come up. Last 20 lines of $nix_daemon_log:" >&2
+      tail -20 "$nix_daemon_log" >&2 || true
+    fi
   fi
 fi
 
