@@ -13,7 +13,7 @@ done
 zsh_path="$(command -v zsh 2>/dev/null || true)"
 if [ -z "$zsh_path" ]; then
   echo "warning: zsh not found in PATH; default shell unchanged" >&2
-elif [ "$(getent passwd "$USER" | cut -d: -f7)" != "$zsh_path" ]; then
+elif [ "$(getent passwd "${USER:-$(id -un)}" | cut -d: -f7)" != "$zsh_path" ]; then
   if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
     echo "$zsh_path missing from /etc/shells; adding (sudo)…"
     echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
@@ -22,7 +22,7 @@ elif [ "$(getent passwd "$USER" | cut -d: -f7)" != "$zsh_path" ]; then
   # password — which is awkward on devboxes / Codespaces where the user has
   # passwordless sudo but no actual password. Run chsh as root targeting
   # the user explicitly to skip the PAM auth.
-  if sudo chsh -s "$zsh_path" "$USER"; then
+  if sudo chsh -s "$zsh_path" "${USER:-$(id -un)}"; then
     echo "Default shell set to $zsh_path. Open a new login session to use it."
   else
     echo "warning: chsh failed; default shell unchanged" >&2
