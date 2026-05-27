@@ -156,10 +156,10 @@ keybinds clear-defaults=true {
         }
     }
     shared_among "normal" "locked" {
-        bind "Alt left" { MoveFocusOrTab "left"; }
+        // Alt left/right intentionally unbound so they pass through to the
+        // shell for cursor-by-word movement. Alt h/l below cover pane focus.
         bind "Alt down" { MoveFocus "down"; }
         bind "Alt up" { MoveFocus "up"; }
-        bind "Alt right" { MoveFocusOrTab "right"; }
         bind "Alt +" { Resize "Increase"; }
         bind "Alt -" { Resize "Decrease"; }
         bind "Alt =" { Resize "Increase"; }
@@ -300,8 +300,9 @@ default_shell "/usr/bin/zsh"
  
 // The name of the default layout to load on startup
 // Default: "default"
-// 
+//
 // default_layout "compact"
+default_layout "welcome"
  
 // The folder in which Zellij will look for layouts
 // (Requires restart)
