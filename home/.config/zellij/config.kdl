@@ -165,7 +165,9 @@ keybinds clear-defaults=true {
         bind "Alt =" { Resize "Increase"; }
         bind "Alt [" { PreviousSwapLayout; }
         bind "Alt ]" { NextSwapLayout; }
-        bind "Alt f" { ToggleFloatingPanes; }
+        // Alt f intentionally unbound: this terminal sends ESC+f for
+        // Alt+Right, which conflicted with shell word-forward movement.
+        // ToggleFloatingPanes is still reachable via pane mode (`w`).
         bind "Alt h" { MoveFocusOrTab "left"; }
         bind "Alt i" { MoveTab "left"; }
         bind "Alt j" { MoveFocus "down"; }
