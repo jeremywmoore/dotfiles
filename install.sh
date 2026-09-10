@@ -81,3 +81,56 @@ if command -v nix >/dev/null 2>&1; then
 else
   echo "warning: nix not on PATH after install; open a fresh shell and re-run ./install.sh" >&2
 fi
+
+# 6. Wire Serena into Claude Code. This runs after step 5 because step 5 is
+# what puts `serena`, `serena-hooks`, and `jq` on PATH.
+if command -v serena >/dev/null 2>&1 && command -v claude >/dev/null 2>&1; then
+  # 6a. Global Serena config. `serena init` rewrites the whole file, so only
+  # create it when it is missing; re-running would discard hand edits.
+  [ -f "$HOME/.serena/serena_config.yml" ] || serena init
+
+  # 6b. Register at user scope so every project gets the server.
+  # --project-from-cwd activates whatever directory Claude Code starts in.
+  # `claude mcp add` fails on a duplicate name, hence the guard.
+  if ! claude mcp get serena >/dev/null 2>&1; then
+    claude mcp add --scope user serena -- \
+      serena start-mcp-server --context claude-code --project-from-cwd
+  fi
+
+  # 6c. Reminder hooks. Claude Code's built-in tool descriptions bias the
+  # model towards its own tools, and it drifts in long sessions. These hooks
+  # re-anchor it on Serena and auto-approve Serena calls in permissive
+  # permission modes. They are merged with jq rather than symlinked from
+  # home/: Claude Code writes settings.json itself (/model, plugin installs)
+  # and an atomic rewrite would replace a symlink with a plain file.
+  settings="$HOME/.claude/settings.json"
+  mkdir -p "$(dirname "$settings")"
+  [ -f "$settings" ] || echo '{}' >"$settings"
+  if command -v jq >/dev/null 2>&1; then
+    serena_hooks_tmp="$(mktemp)"
+    if jq '
+      def ensure($event; $matcher; $cmd):
+        if any((.hooks[$event] // [])[]; any(.hooks[]?; .command == $cmd))
+        then .
+        else .hooks[$event] = ((.hooks[$event] // []) +
+          [{matcher: $matcher, hooks: [{type: "command", command: $cmd}]}])
+        end;
+      ensure("PreToolUse"; ""; "serena-hooks remind --client=claude-code")
+      | ensure("PreToolUse"; "mcp__serena__*"; "serena-hooks auto-approve --client=claude-code")
+      | ensure("SessionStart"; ""; "serena-hooks activate --client=claude-code")
+      | ensure("SessionEnd"; ""; "serena-hooks cleanup --client=claude-code")
+    ' "$settings" >"$serena_hooks_tmp"; then
+      # Copy through instead of `mv`, to keep the file's permissions and to
+      # write through a symlink rather than replacing one.
+      cat "$serena_hooks_tmp" >"$settings"
+      echo "Serena hooks present in $settings"
+    else
+      echo "warning: could not merge Serena hooks into $settings" >&2
+    fi
+    rm -f "$serena_hooks_tmp"
+  else
+    echo "warning: jq not on PATH; skipped Serena hooks in $settings" >&2
+  fi
+else
+  echo "warning: serena or claude not on PATH; skipped Serena setup" >&2
+fi

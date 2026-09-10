@@ -60,5 +60,18 @@ eval "$(starship init zsh)"
 source <(jj util completion zsh)
 export ND_SSO_NO_BROWSER=true
 
+# Serena starts a language server per project, so a cold start can exceed
+# Claude Code's default MCP startup timeout.
+export MCP_TIMEOUT=60000
+
+# Claude Code's built-in tool descriptions bias the model heavily towards its
+# own tools, so it ignores Serena. Serena ships a system prompt that
+# counteracts this. This is a separate command rather than a `claude` wrapper
+# because --system-prompt replaces the default prompt instead of adding to it,
+# which is only wanted in Serena-driven sessions.
+claude-serena() {
+  claude --system-prompt="$(serena prompts print-cc-system-prompt-override)" "$@"
+}
+
 eval "$(zellij setup --generate-auto-start zsh)"
 setopt INTERACTIVE_COMMENTS

@@ -18,6 +18,7 @@ cd ~/dotfiles && ./install.sh
 3. Installs Determinate Nix if `nix` isn't on PATH.
 4. Starts `nix-daemon` if it's not running (containers without systemd).
 5. Installs the nix profile entry from this flake.
+6. Wires Serena into Claude Code (see [Serena](#serena)).
 
 Idempotent — re-run safely after edits.
 
@@ -58,7 +59,60 @@ when there are uncommitted changes here.
   `allowUnfreePredicate` scoped to that one package.
 - **`jj-domino`** — pulled from upstream flake
   (`github:zombiezen/jj-domino`), not nixpkgs.
-- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`.
+- **`serena`** — pulled from upstream flake (`github:oraios/serena`), not
+  nixpkgs. Its input does not `follows` our nixpkgs: Serena builds its
+  Python env with uv2nix and carries overrides tied to its own pin.
+- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`,
+  `jq`.
+
+## Serena
+
+[Serena](https://oraios.github.io/serena) gives Claude Code symbol-level
+code navigation and editing through a language server, in place of reading
+and grepping whole files.
+
+Upstream installs it with `uv tool install serena-agent`. This repo uses
+the flake Serena ships instead, so it upgrades with `just upgrade` like
+every other tool and needs no separate Python toolchain.
+
+The input tracks Serena's default branch, so `serena --version` reports a
+`.dev` version rather than a release. `flake.lock` still pins an exact
+commit; `just upgrade` is what moves it. To follow releases instead, pin
+the input to a tag: `serena.url = "github:oraios/serena/v1.7.0"`.
+
+`install.sh` step 6 creates `~/.serena/serena_config.yml` and registers the
+MCP server at user scope, so it applies to every project:
+
+```sh
+claude mcp add --scope user serena -- \
+  serena start-mcp-server --context claude-code --project-from-cwd
+```
+
+`--project-from-cwd` activates whatever directory Claude Code starts in.
+Serena writes a `.serena/` directory into each such project; add it to the
+project's ignore file.
+
+Verify with `/mcp` in Claude Code. `.zshrc` sets `MCP_TIMEOUT=60000`
+because a cold start has to boot a language server.
+
+### Counteracting Claude Code's tool bias
+
+Claude Code's built-in tool descriptions bias the model towards its own
+tools, so it often ignores Serena. Two mitigations:
+
+- `claude-serena` (a `.zshrc` function) starts Claude Code with Serena's
+  system prompt override. It replaces the default system prompt, so it is
+  a separate command rather than a `claude` wrapper.
+- Reminder hooks re-anchor the model on Serena and stop it drifting in
+  long sessions. `install.sh` merges four of them into
+  `~/.claude/settings.json`: `remind` and `auto-approve` on `PreToolUse`,
+  `activate` on `SessionStart`, and `cleanup` on `SessionEnd`. The merge
+  is idempotent and leaves the rest of the file alone. Delete the entries
+  to opt out; `install.sh` only adds a hook it cannot already find.
+
+`settings.json` is merged rather than symlinked from `home/`, because
+Claude Code rewrites that file itself and would replace a symlink with a
+plain file.
 
 ## Why this exists
 
