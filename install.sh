@@ -97,7 +97,22 @@ if command -v serena >/dev/null 2>&1 && command -v claude >/dev/null 2>&1; then
       serena start-mcp-server --context claude-code --project-from-cwd
   fi
 
-  # 6c. Reminder hooks. Claude Code's built-in tool descriptions bias the
+  # 6c. Keep per-project Serena data out of the projects themselves. By
+  # default Serena writes a .serena/ directory into every repo it activates,
+  # which jj auto-tracks into the next change. Key the central path on
+  # $projectDir, not $projectFolderName: two checkouts of the same repo share
+  # a folder name, and would then share one cache and one set of memories.
+  serena_config="$HOME/.serena/serena_config.yml"
+  serena_folder="$HOME"'/.serena/projects$projectDir'
+  if [ -f "$serena_config" ]; then
+    if grep -q '^project_serena_folder_location:' "$serena_config"; then
+      sed -i "s|^project_serena_folder_location:.*|project_serena_folder_location: \"$serena_folder\"|" "$serena_config"
+    else
+      printf '\nproject_serena_folder_location: "%s"\n' "$serena_folder" >>"$serena_config"
+    fi
+  fi
+
+  # 6d. Reminder hooks. Claude Code's built-in tool descriptions bias the
   # model towards its own tools, and it drifts in long sessions. These hooks
   # re-anchor it on Serena and auto-approve Serena calls in permissive
   # permission modes. They are merged with jq rather than symlinked from

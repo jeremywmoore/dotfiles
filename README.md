@@ -89,8 +89,37 @@ claude mcp add --scope user serena -- \
 ```
 
 `--project-from-cwd` activates whatever directory Claude Code starts in.
-Serena writes a `.serena/` directory into each such project; add it to the
-project's ignore file.
+
+### Per-project data
+
+Serena keeps per-project data (a generated `project.yml`, memories, and a
+language-server cache) in a `.serena/` folder. By default that folder goes
+*inside* the project, where jj auto-tracks it into the next change. Step 6
+redirects it to a central location instead:
+
+```yaml
+# ~/.serena/serena_config.yml
+project_serena_folder_location: "$HOME/.serena/projects$projectDir"
+```
+
+The path is keyed on `$projectDir`, not the `$projectFolderName` that
+upstream's example uses. Two checkouts of one repo share a folder name, so
+`$projectFolderName` maps `/opt/ngrok` and `~/ngrok` to the same directory
+and merges their caches and memories. `$projectDir` is absolute, so the
+paths stay distinct:
+
+```
+/opt/ngrok  ->  ~/.serena/projects/opt/ngrok
+~/ngrok     ->  ~/.serena/projects/home/j.moore/ngrok
+```
+
+Serena prefers an existing in-project `.serena/` over the configured path.
+Delete a project's `.serena/` folder to move it to the central location.
+
+Upstream intends the in-project layout: the `.serena/.gitignore` Serena
+writes excludes only `cache` and `project.local.yml`, so `project.yml` and
+`memories/` are meant to be committed and shared. Central storage trades
+that away to keep other people's repos clean.
 
 Verify with `/mcp` in Claude Code. `.zshrc` sets `MCP_TIMEOUT=60000`
 because a cold start has to boot a language server.
