@@ -72,8 +72,10 @@ fi
 # 5. (Re)install nix profile from the flake. Best-effort — print recovery
 # guidance instead of aborting if the daemon still isn't reachable.
 if command -v nix >/dev/null 2>&1; then
-  nix profile remove dotfiles 2>/dev/null || true
-  nix profile remove flake 2>/dev/null || true
+  # Drop any existing entry for this flake before re-adding. Nix >=2.20 names
+  # profile entries by flake URL, older versions by attribute name.
+  nix profile remove --regex "git\+file://$PWD#.*" 2>/dev/null || true
+  nix profile remove dotfiles flake 2>/dev/null || true
   if ! nix profile add "$PWD"; then
     echo "warning: 'nix profile add' failed." >&2
     echo "  If it's a daemon issue: sudo nix-daemon & ; nix profile add $PWD" >&2
