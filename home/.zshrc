@@ -73,5 +73,12 @@ claude-serena() {
   claude --system-prompt="$(serena prompts print-cc-system-prompt-override)" "$@"
 }
 
-eval "$(zellij setup --generate-auto-start zsh)"
+# Replaces `zellij setup --generate-auto-start zsh`. That snippet runs bare
+# `zellij` unless ZELLIJ_AUTO_ATTACH is true. Bare `zellij` always creates a new
+# session, and `default_layout "welcome"` makes that session the picker. Picking
+# a session moves the client but leaves the picker session running, so every
+# shell added one. A fixed name makes all shells share a single picker session.
+if [[ -z "$ZELLIJ" ]]; then
+  zellij attach -c picker
+fi
 setopt INTERACTIVE_COMMENTS
