@@ -31,18 +31,29 @@ fi
 
 # 3. Bootstrap nix if not present (Determinate Systems installer; --no-confirm
 # for non-interactive boots like Codespaces dotfiles install).
-if ! command -v nix >/dev/null 2>&1; then
-  echo "nix not found — installing Determinate Nix…"
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
-    | sh -s -- install --determinate --no-confirm
-  # Source the daemon profile so nix is on PATH for the rest of this run.
+#
+# A non-login shell (cloud-init, sudo -u) can miss nix on PATH even when nix is
+# installed, so load the daemon profile before deciding to install.
+load_nix_profile() {
   for f in /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh /etc/profile.d/nix.sh; do
     if [ -f "$f" ]; then
       # shellcheck source=/dev/null
       . "$f"
-      break
+      return
     fi
   done
+}
+
+command -v nix >/dev/null 2>&1 || load_nix_profile
+if ! command -v nix >/dev/null 2>&1; then
+  if [ -e /nix/receipt.json ]; then
+    echo "warning: nix is installed (/nix/receipt.json) but not on PATH; open a login shell and re-run ./install.sh" >&2
+  else
+    echo "nix not found — installing Determinate Nix…"
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+      | sh -s -- install --determinate --no-confirm
+    load_nix_profile
+  fi
 fi
 
 # 4. Start nix-daemon if it isn't running. Containers without systemd
