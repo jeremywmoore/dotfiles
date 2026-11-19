@@ -5,22 +5,26 @@ function ne() {
 alias gitclean='git branch -d $(git branch --merged=main | grep -v main) && git fetch --prune'
 alias fixssh='export SSH_AUTH_SOCK=$(ls -t /tmp/ssh-**/* | head -1)'
 alias pp='tr ":" "\n" <<< "$PATH"'
-# Delete every zellij session that has no client attached. A session's socket
-# at $XDG_RUNTIME_DIR/zellij/contract_version_1/<name> gets an ESTABLISHED
-# peer for each attached client; zellij's own list-sessions only marks the
-# current shell's session, so it can't see clients attached elsewhere.
-zjclean() {
-  local sock_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zellij/contract_version_1"
-  local established
-  established=$(ss -xH state established 2>/dev/null)
-  zellij list-sessions -s -n 2>/dev/null | while IFS= read -r session; do
-    [[ -n "$session" ]] || continue
-    if awk -v p="$sock_dir/$session" '$4 == p { found=1; exit } END { exit !found }' <<<"$established"; then
-      continue
-    fi
-    zellij delete-session -f "$session"
-  done
-}
+# --- zellij (disabled; sessions are moving to rex) ---
+# Uncomment this and the auto-attach block at the end, and re-add zellij to
+# home.packages in home.nix, to switch back.
+#
+# # Delete every zellij session that has no client attached. A session's socket
+# # at $XDG_RUNTIME_DIR/zellij/contract_version_1/<name> gets an ESTABLISHED
+# # peer for each attached client; zellij's own list-sessions only marks the
+# # current shell's session, so it can't see clients attached elsewhere.
+# zjclean() {
+#   local sock_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zellij/contract_version_1"
+#   local established
+#   established=$(ss -xH state established 2>/dev/null)
+#   zellij list-sessions -s -n 2>/dev/null | while IFS= read -r session; do
+#     [[ -n "$session" ]] || continue
+#     if awk -v p="$sock_dir/$session" '$4 == p { found=1; exit } END { exit !found }' <<<"$established"; then
+#       continue
+#     fi
+#     zellij delete-session -f "$session"
+#   done
+# }
 
 # Strip stale mise install paths injected by parent processes — most
 # commonly VS Code Remote's resolved shell env, captured at server
@@ -60,12 +64,13 @@ eval "$(starship init zsh)"
 source <(jj util completion zsh)
 export ND_SSO_NO_BROWSER=true
 
-# Replaces `zellij setup --generate-auto-start zsh`. That snippet runs bare
-# `zellij` unless ZELLIJ_AUTO_ATTACH is true. Bare `zellij` always creates a new
-# session, and `default_layout "welcome"` makes that session the picker. Picking
-# a session moves the client but leaves the picker session running, so every
-# shell added one. A fixed name makes all shells share a single picker session.
-if [[ -z "$ZELLIJ" ]]; then
-  zellij attach -c picker
-fi
+# zellij auto-attach (disabled; see the zellij note at the top).
+# # Replaces `zellij setup --generate-auto-start zsh`. That snippet runs bare
+# # `zellij` unless ZELLIJ_AUTO_ATTACH is true. Bare `zellij` always creates a new
+# # session, and `default_layout "welcome"` makes that session the picker. Picking
+# # a session moves the client but leaves the picker session running, so every
+# # shell added one. A fixed name makes all shells share a single picker session.
+# if [[ -z "$ZELLIJ" ]]; then
+#   zellij attach -c picker
+# fi
 setopt INTERACTIVE_COMMENTS

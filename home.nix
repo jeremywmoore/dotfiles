@@ -29,7 +29,7 @@ in
     jujutsu          # jj
     just
     tmux
-    zellij
+    # zellij         # disabled; sessions are moving to rex
     starship
     inputs.jj-domino.packages.${system}.default
     inputs.interactive-nix-search.packages.${system}.default
