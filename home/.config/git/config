@@ -1,0 +1,4 @@
+# Provisioners clone over HTTPS because a fresh box has no SSH key yet.
+# Fetches stay on HTTPS; pushes go over SSH.
+[url "git@github.com:"]
+	pushInsteadOf = https://github.com/
