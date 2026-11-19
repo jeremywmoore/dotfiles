@@ -66,7 +66,18 @@ nix profile remove dotfiles flake 2>/dev/null || true
 DOTFILES_DIR="$PWD" nix run --inputs-from "$PWD" home-manager -- \
   switch --impure --flake "$PWD#default"
 
-# 5. Set default shell to zsh if it isn't already. This runs last, after
+# 5. Keep systemd user services, such as the Rex server, running after
+# logout. Without lingering, the last logout stops them and ends every Rex
+# session. Hosts without systemd (most containers) skip this.
+user="${USER:-$(id -un)}"
+if [ -d /run/systemd/system ] \
+  && [ "$(loginctl show-user "$user" -p Linger --value 2>/dev/null)" != yes ]; then
+  if ! loginctl enable-linger "$user"; then
+    echo "warning: could not enable lingering; run 'loginctl enable-linger' once" >&2
+  fi
+fi
+
+# 6. Set default shell to zsh if it isn't already. This runs last, after
 # the switch links ~/.zshrc and installs the tools it uses. A login during
 # provisioning then gets the old shell, not a bare zsh.
 zsh_path="$(command -v zsh 2>/dev/null || true)"
