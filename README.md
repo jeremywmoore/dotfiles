@@ -17,7 +17,9 @@ cd ~/dotfiles && ./install.sh
 3. Removes the `nix profile` entry that older installs made from this flake.
 4. Runs `home-manager switch`, which installs the tools, links `home/`
    into `$HOME`, and starts the Rex server.
-5. Sets the default login shell to `zsh` if it isn't already. This comes
+5. Turns on systemd lingering, so the Rex server keeps running after
+   logout.
+6. Sets the default login shell to `zsh` if it isn't already. This comes
    last, so a login before the switch finishes gets the old shell instead
    of a zsh with no config.
 
@@ -82,11 +84,8 @@ unit but don't start it. The module's SSH guard means home-manager owns
 `~/.ssh/config`, so add hosts in `programs.ssh` rather than editing the
 file.
 
-The server stops at logout unless lingering is on:
-
-```sh
-loginctl enable-linger
-```
+`install.sh` turns on lingering, so the server keeps running after
+logout.
 
 `just apply` never restarts a running server, because a restart ends every
 session. After an upgrade, run `systemctl --user restart rex`. Logs:
