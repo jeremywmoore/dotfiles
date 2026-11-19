@@ -2,27 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# 1. Set default shell to zsh if it isn't already.
-zsh_path="$(command -v zsh 2>/dev/null || true)"
-if [ -z "$zsh_path" ]; then
-  echo "warning: zsh not found in PATH; default shell unchanged" >&2
-elif [ "$(getent passwd "${USER:-$(id -un)}" | cut -d: -f7)" != "$zsh_path" ]; then
-  if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
-    echo "$zsh_path missing from /etc/shells; adding (sudo)…"
-    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
-  fi
-  # `chsh` (without sudo) authenticates the user via PAM and prompts for a
-  # password — which is awkward on devboxes / Codespaces where the user has
-  # passwordless sudo but no actual password. Run chsh as root targeting
-  # the user explicitly to skip the PAM auth.
-  if sudo chsh -s "$zsh_path" "${USER:-$(id -un)}"; then
-    echo "Default shell set to $zsh_path. Open a new login session to use it."
-  else
-    echo "warning: chsh failed; default shell unchanged" >&2
-  fi
-fi
-
-# 2. Bootstrap nix if not present (Determinate Systems installer; --no-confirm
+# 1. Bootstrap nix if not present (Determinate Systems installer; --no-confirm
 # for non-interactive boots like Codespaces dotfiles install).
 #
 # A non-login shell (cloud-init, sudo -u) can miss nix on PATH even when nix is
@@ -50,7 +30,7 @@ if ! command -v nix >/dev/null 2>&1; then
 fi
 command -v nix >/dev/null 2>&1 || exit 1
 
-# 3. Start nix-daemon if it isn't running. Containers without systemd
+# 2. Start nix-daemon if it isn't running. Containers without systemd
 # (Codespaces, plain Docker) don't auto-start it, so the switch below
 # fails with "cannot connect to socket".
 if ! nix store ping >/dev/null 2>&1; then
@@ -74,14 +54,36 @@ if ! nix store ping >/dev/null 2>&1; then
   fi
 fi
 
-# 4. Remove the profile entry that older installs made from this flake. It
+# 3. Remove the profile entry that older installs made from this flake. It
 # holds the same binaries as home-manager's entry, and nix refuses the
 # overlap. Nix >=2.20 names entries by flake URL, older versions by attribute.
 nix profile remove --regex "git\+file://$PWD#.*" 2>/dev/null || true
 nix profile remove dotfiles flake 2>/dev/null || true
 
-# 5. Apply the home-manager config: tools, home/ links, and the Rex server.
+# 4. Apply the home-manager config: tools, home/ links, and the Rex server.
 # home-manager comes from this flake's lock, so the first run needs no
 # global install.
 DOTFILES_DIR="$PWD" nix run --inputs-from "$PWD" home-manager -- \
   switch --impure --flake "$PWD#default"
+
+# 5. Set default shell to zsh if it isn't already. This runs last, after
+# the switch links ~/.zshrc and installs the tools it uses. A login during
+# provisioning then gets the old shell, not a bare zsh.
+zsh_path="$(command -v zsh 2>/dev/null || true)"
+if [ -z "$zsh_path" ]; then
+  echo "warning: zsh not found in PATH; default shell unchanged" >&2
+elif [ "$(getent passwd "${USER:-$(id -un)}" | cut -d: -f7)" != "$zsh_path" ]; then
+  if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+    echo "$zsh_path missing from /etc/shells; adding (sudo)…"
+    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+  fi
+  # `chsh` (without sudo) authenticates the user via PAM and prompts for a
+  # password — which is awkward on devboxes / Codespaces where the user has
+  # passwordless sudo but no actual password. Run chsh as root targeting
+  # the user explicitly to skip the PAM auth.
+  if sudo chsh -s "$zsh_path" "${USER:-$(id -un)}"; then
+    echo "Default shell set to $zsh_path. Open a new login session to use it."
+  else
+    echo "warning: chsh failed; default shell unchanged" >&2
+  fi
+fi
