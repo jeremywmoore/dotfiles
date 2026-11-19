@@ -61,7 +61,7 @@ shows a yellow `●` when there are uncommitted changes here.
     └── .config/
         ├── jj/config.toml
         ├── starship.toml
-        └── zellij/config.kdl
+        └── zellij/config.kdl  # unused while zellij is disabled
 ```
 
 ## What's installed
@@ -73,7 +73,7 @@ shows a yellow `●` when there are uncommitted changes here.
 - **`rex`** — prebuilt flake from the vendor's `preview` channel (no
   `stable` channel yet). Keeps its own nixpkgs pin rather than following
   ours. Installed by its home-manager module; see below.
-- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`,
+- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `starship`, `delta`,
   `jq`.
 
 ## Rex server
