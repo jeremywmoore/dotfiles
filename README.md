@@ -12,12 +12,14 @@ cd ~/dotfiles && ./install.sh
 
 `install.sh`:
 
-1. Sets the default login shell to `zsh` if it isn't already.
-2. Installs Determinate Nix if `nix` isn't on PATH.
-3. Starts `nix-daemon` if it's not running (containers without systemd).
-4. Removes the `nix profile` entry that older installs made from this flake.
-5. Runs `home-manager switch`, which installs the tools, links `home/`
+1. Installs Determinate Nix if `nix` isn't on PATH.
+2. Starts `nix-daemon` if it's not running (containers without systemd).
+3. Removes the `nix profile` entry that older installs made from this flake.
+4. Runs `home-manager switch`, which installs the tools, links `home/`
    into `$HOME`, and starts the Rex server.
+5. Sets the default login shell to `zsh` if it isn't already. This comes
+   last, so a login before the switch finishes gets the old shell instead
+   of a zsh with no config.
 
 Idempotent — re-run safely after edits.
 
