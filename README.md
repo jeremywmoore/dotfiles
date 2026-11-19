@@ -1,7 +1,7 @@
 # dotfiles
 
-Personal toolchain (a nix flake) + config (symlinked from `home/`), set up
-via `install.sh`. Public; no secrets.
+Personal toolchain + config as one home-manager flake, set up via
+`install.sh`. Public; no secrets.
 
 ## Install
 
@@ -12,30 +12,35 @@ cd ~/dotfiles && ./install.sh
 
 `install.sh`:
 
-1. Symlinks every file under `home/` into the matching path in `$HOME`
-   (relative symlinks, so the repo can be relocated).
-2. Sets the default login shell to `zsh` if it isn't already.
-3. Installs Determinate Nix if `nix` isn't on PATH.
-4. Starts `nix-daemon` if it's not running (containers without systemd).
-5. Installs the nix profile entry from this flake.
-6. Applies the home-manager config (`home.nix`) on Linux hosts with a
-   systemd user manager.
+1. Sets the default login shell to `zsh` if it isn't already.
+2. Installs Determinate Nix if `nix` isn't on PATH.
+3. Starts `nix-daemon` if it's not running (containers without systemd).
+4. Removes the `nix profile` entry that older installs made from this flake.
+5. Runs `home-manager switch`, which installs the tools, links `home/`
+   into `$HOME`, and starts the Rex server.
 
 Idempotent — re-run safely after edits.
+
+The config reads `$USER`, `$HOME`, the current system, and
+`$DOTFILES_DIR` (the checkout) at evaluation time, so one config serves
+every host. That needs `--impure`; `install.sh` and `just apply` pass it.
 
 ## Day-to-day
 
 ```sh
 just            # show available recipes
-just upgrade    # bump pins (flake.lock) and rebuild
+just apply      # apply home.nix / flake.nix edits
+just upgrade    # bump pins (flake.lock) and apply
 just packages   # list every tool with its resolved version
-just rollback   # revert to previous nix profile generation
-just edit       # open flake.nix in $EDITOR
+just rollback   # activate the previous home-manager generation
+just edit       # open home.nix in $EDITOR
 ```
 
-Edit `home/<...>` files in place — they're symlinked, so `$HOME` edits
-are repo edits. Commit when ready. The starship prompt shows a yellow `●`
-when there are uncommitted changes here.
+Edit `home/<...>` files in place — home-manager links them to the
+checkout, not the store, so `$HOME` edits are repo edits and need no
+switch. A new file under `home/` needs `just apply` (and `git add`, since
+flakes only see tracked files). Commit when ready. The starship prompt
+shows a yellow `●` when there are uncommitted changes here.
 
 ## Layout
 
@@ -44,10 +49,10 @@ when there are uncommitted changes here.
 ├── README.md
 ├── install.sh
 ├── justfile
-├── flake.nix          # nix profile source
+├── flake.nix          # inputs + homeConfigurations.default
 ├── flake.lock
-├── home.nix           # home-manager config (Rex server)
-└── home/              # mirror of $HOME, symlinked in by install.sh
+├── home.nix           # packages, home/ links, services
+└── home/              # mirror of $HOME, linked in by home.nix
     ├── .zshrc
     └── .config/
         ├── jj/config.toml
@@ -55,22 +60,25 @@ when there are uncommitted changes here.
         └── zellij/config.kdl
 ```
 
-## What's in the flake
+## What's installed
 
 - **`claude-code`** — in nixpkgs, marked unfree, allowed via
   `allowUnfreePredicate` scoped to that one package.
-- **`jj-domino`** — pulled from upstream flake
-  (`github:zombiezen/jj-domino`), not nixpkgs.
+- **`jj-domino`**, **`interactive-nix-search`** — pulled from their
+  upstream flakes, not nixpkgs.
 - **`rex`** — prebuilt flake from the vendor's `preview` channel (no
   `stable` channel yet). Keeps its own nixpkgs pin rather than following
-  ours. Installed through home-manager, not the buildEnv; see below.
+  ours. Installed by its home-manager module; see below.
+- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`,
+  `jq`.
 
-## home-manager
+## Rex server
 
-`home.nix` holds only what needs a module: today, the Rex server as the
-`rex` systemd user service. Tools stay in the buildEnv and plain dotfiles
-stay in `home/`. home-manager owns `~/.ssh/config` (it carries the Rex
-SSH guard), so add hosts in `programs.ssh` rather than editing the file.
+On Linux, `services.rex` runs the Rex server as the `rex` systemd user
+service. Hosts without a systemd user manager (most containers) get the
+unit but don't start it. The module's SSH guard means home-manager owns
+`~/.ssh/config`, so add hosts in `programs.ssh` rather than editing the
+file.
 
 The server stops at logout unless lingering is on:
 
@@ -81,8 +89,6 @@ loginctl enable-linger
 `just apply` never restarts a running server, because a restart ends every
 session. After an upgrade, run `systemctl --user restart rex`. Logs:
 `journalctl --user -u rex`.
-- nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`,
-  `jq`.
 
 ## Why this exists
 

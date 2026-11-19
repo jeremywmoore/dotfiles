@@ -2,14 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# 1. Symlink home/* into $HOME — works even without nix; never blocks the rest.
-find home -type f | while read -r src; do
-  dest="$HOME/${src#home/}"
-  mkdir -p "$(dirname "$dest")"
-  ln -srfv "$PWD/$src" "$dest"
-done
-
-# 2. Set default shell to zsh if it isn't already.
+# 1. Set default shell to zsh if it isn't already.
 zsh_path="$(command -v zsh 2>/dev/null || true)"
 if [ -z "$zsh_path" ]; then
   echo "warning: zsh not found in PATH; default shell unchanged" >&2
@@ -29,7 +22,7 @@ elif [ "$(getent passwd "${USER:-$(id -un)}" | cut -d: -f7)" != "$zsh_path" ]; t
   fi
 fi
 
-# 3. Bootstrap nix if not present (Determinate Systems installer; --no-confirm
+# 2. Bootstrap nix if not present (Determinate Systems installer; --no-confirm
 # for non-interactive boots like Codespaces dotfiles install).
 #
 # A non-login shell (cloud-init, sudo -u) can miss nix on PATH even when nix is
@@ -47,7 +40,7 @@ load_nix_profile() {
 command -v nix >/dev/null 2>&1 || load_nix_profile
 if ! command -v nix >/dev/null 2>&1; then
   if [ -e /nix/receipt.json ]; then
-    echo "warning: nix is installed (/nix/receipt.json) but not on PATH; open a login shell and re-run ./install.sh" >&2
+    echo "error: nix is installed (/nix/receipt.json) but not on PATH; open a login shell and re-run ./install.sh" >&2
   else
     echo "nix not found — installing Determinate Nix…"
     curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
@@ -55,11 +48,12 @@ if ! command -v nix >/dev/null 2>&1; then
     load_nix_profile
   fi
 fi
+command -v nix >/dev/null 2>&1 || exit 1
 
-# 4. Start nix-daemon if it isn't running. Containers without systemd
-# (Codespaces, plain Docker) don't auto-start it, so `nix profile add`
+# 3. Start nix-daemon if it isn't running. Containers without systemd
+# (Codespaces, plain Docker) don't auto-start it, so the switch below
 # fails with "cannot connect to socket".
-if command -v nix >/dev/null 2>&1 && ! nix store ping >/dev/null 2>&1; then
+if ! nix store ping >/dev/null 2>&1; then
   # Resolve the full path: nix-daemon usually isn't on root's PATH (it
   # lives under /nix/var/nix/profiles/default/bin), and sudo searches its
   # own PATH unless given an absolute path.
@@ -80,28 +74,14 @@ if command -v nix >/dev/null 2>&1 && ! nix store ping >/dev/null 2>&1; then
   fi
 fi
 
-# 5. (Re)install nix profile from the flake. Best-effort — print recovery
-# guidance instead of aborting if the daemon still isn't reachable.
-if command -v nix >/dev/null 2>&1; then
-  # Drop any existing entry for this flake before re-adding. Nix >=2.20 names
-  # profile entries by flake URL, older versions by attribute name.
-  nix profile remove --regex "git\+file://$PWD#.*" 2>/dev/null || true
-  nix profile remove dotfiles flake 2>/dev/null || true
-  if ! nix profile add "$PWD"; then
-    echo "warning: 'nix profile add' failed." >&2
-    echo "  If it's a daemon issue: sudo nix-daemon & ; nix profile add $PWD" >&2
-  fi
-else
-  echo "warning: nix not on PATH after install; open a fresh shell and re-run ./install.sh" >&2
-fi
+# 4. Remove the profile entry that older installs made from this flake. It
+# holds the same binaries as home-manager's entry, and nix refuses the
+# overlap. Nix >=2.20 names entries by flake URL, older versions by attribute.
+nix profile remove --regex "git\+file://$PWD#.*" 2>/dev/null || true
+nix profile remove dotfiles flake 2>/dev/null || true
 
-# 6. Apply the home-manager config (the Rex server as a systemd user service).
-# It needs a systemd user manager, which containers usually lack.
-if command -v nix >/dev/null 2>&1 && [ "$(uname -s)" = Linux ] \
-  && systemctl --user show-environment >/dev/null 2>&1; then
-  if ! nix run github:nix-community/home-manager -- switch --flake "$PWD#j.moore"; then
-    echo "warning: home-manager activation failed." >&2
-  fi
-else
-  echo "Skipping home-manager: needs nix and a systemd user manager on Linux." >&2
-fi
+# 5. Apply the home-manager config: tools, home/ links, and the Rex server.
+# home-manager comes from this flake's lock, so the first run needs no
+# global install.
+DOTFILES_DIR="$PWD" nix run --inputs-from "$PWD" home-manager -- \
+  switch --impure --flake "$PWD#default"

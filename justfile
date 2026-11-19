@@ -13,18 +13,17 @@ bump:
 
 # Apply current flake.nix selection without bumping pins
 apply:
-    nix profile upgrade --all
-    home-manager switch --flake {{ _dotfiles }}#j.moore
+    DOTFILES_DIR={{ _dotfiles }} home-manager switch --impure --flake {{ _dotfiles }}#default
 
 # Bump only one input (e.g. `just bump-input nixpkgs`)
 bump-input input:
     nix flake update --flake {{ _dotfiles }} {{ input }}
 
-# Show installed profile entries (the flake itself)
+# Show home-manager generations, newest first
 list:
-    nix profile list
+    home-manager generations
 
-# Show every tool in the buildEnv with its resolved name-version
+# Show every installed tool with its resolved name-version
 packages:
     @for b in ~/.nix-profile/bin/*; do realpath "$b"; done \
         | sed 's|/bin/.*||' \
@@ -33,21 +32,24 @@ packages:
 
 # Show what changed between current and previous generation
 diff:
-    nix profile diff-closures
+    nix store diff-closures \
+        "$(home-manager generations | sed -n 2p | awk '{print $7}')" \
+        "$(home-manager generations | sed -n 1p | awk '{print $7}')"
 
 # Roll back to the previous generation
 rollback:
-    nix profile rollback
+    "$(home-manager generations | sed -n 2p | awk '{print $7}')/activate"
 
 # Verify the flake evaluates cleanly
 check:
-    nix flake check {{ _dotfiles }}
+    DOTFILES_DIR={{ _dotfiles }} nix build --impure --no-link \
+        '{{ _dotfiles }}#homeConfigurations.default.activationPackage'
 
-# Open flake.nix in $EDITOR
+# Open home.nix in $EDITOR
 edit:
-    ${EDITOR:-vi} {{ _dotfiles }}/flake.nix
+    ${EDITOR:-vi} {{ _dotfiles }}/home.nix
 
-# Drop old profile generations and unreferenced store paths
+# Drop old generations and unreferenced store paths
 gc:
-    nix profile wipe-history
+    home-manager expire-generations now
     nix-collect-garbage
