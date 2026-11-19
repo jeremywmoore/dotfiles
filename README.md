@@ -18,6 +18,8 @@ cd ~/dotfiles && ./install.sh
 3. Installs Determinate Nix if `nix` isn't on PATH.
 4. Starts `nix-daemon` if it's not running (containers without systemd).
 5. Installs the nix profile entry from this flake.
+6. Applies the home-manager config (`home.nix`) on Linux hosts with a
+   systemd user manager.
 
 Idempotent — re-run safely after edits.
 
@@ -44,6 +46,7 @@ when there are uncommitted changes here.
 ├── justfile
 ├── flake.nix          # nix profile source
 ├── flake.lock
+├── home.nix           # home-manager config (Rex server)
 └── home/              # mirror of $HOME, symlinked in by install.sh
     ├── .zshrc
     └── .config/
@@ -58,6 +61,26 @@ when there are uncommitted changes here.
   `allowUnfreePredicate` scoped to that one package.
 - **`jj-domino`** — pulled from upstream flake
   (`github:zombiezen/jj-domino`), not nixpkgs.
+- **`rex`** — prebuilt flake from the vendor's `preview` channel (no
+  `stable` channel yet). Keeps its own nixpkgs pin rather than following
+  ours. Installed through home-manager, not the buildEnv; see below.
+
+## home-manager
+
+`home.nix` holds only what needs a module: today, the Rex server as the
+`rex` systemd user service. Tools stay in the buildEnv and plain dotfiles
+stay in `home/`. home-manager owns `~/.ssh/config` (it carries the Rex
+SSH guard), so add hosts in `programs.ssh` rather than editing the file.
+
+The server stops at logout unless lingering is on:
+
+```sh
+loginctl enable-linger
+```
+
+`just apply` never restarts a running server, because a restart ends every
+session. After an upgrade, run `systemctl --user restart rex`. Logs:
+`journalctl --user -u rex`.
 - nixpkgs: `jujutsu` (jj), `just`, `tmux`, `zellij`, `starship`, `delta`,
   `jq`.
 

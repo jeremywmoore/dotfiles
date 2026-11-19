@@ -14,6 +14,7 @@ bump:
 # Apply current flake.nix selection without bumping pins
 apply:
     nix profile upgrade --all
+    home-manager switch --flake {{ _dotfiles }}#j.moore
 
 # Bump only one input (e.g. `just bump-input nixpkgs`)
 bump-input input:

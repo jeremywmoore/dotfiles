@@ -94,3 +94,14 @@ if command -v nix >/dev/null 2>&1; then
 else
   echo "warning: nix not on PATH after install; open a fresh shell and re-run ./install.sh" >&2
 fi
+
+# 6. Apply the home-manager config (the Rex server as a systemd user service).
+# It needs a systemd user manager, which containers usually lack.
+if command -v nix >/dev/null 2>&1 && [ "$(uname -s)" = Linux ] \
+  && systemctl --user show-environment >/dev/null 2>&1; then
+  if ! nix run github:nix-community/home-manager -- switch --flake "$PWD#j.moore"; then
+    echo "warning: home-manager activation failed." >&2
+  fi
+else
+  echo "Skipping home-manager: needs nix and a systemd user manager on Linux." >&2
+fi
