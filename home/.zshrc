@@ -62,7 +62,6 @@ PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vE '/\.local/share/mise/install
 eval "$(starship init zsh)"
 
 source <(jj util completion zsh)
-export ND_SSO_NO_BROWSER=true
 
 # zellij auto-attach (disabled; see the zellij note at the top).
 # # Replaces `zellij setup --generate-auto-start zsh`. That snippet runs bare
