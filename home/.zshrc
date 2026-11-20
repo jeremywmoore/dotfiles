@@ -3,8 +3,16 @@ function ne() {
 }
 
 alias gitclean='git branch -d $(git branch --merged=main | grep -v main) && git fetch --prune'
-alias fixssh='export SSH_AUTH_SOCK=$(ls -t /tmp/ssh-**/* | head -1)'
+alias fixssh='export SSH_AUTH_SOCK=$HOME/.ssh/agent.sock'
 alias pp='tr ":" "\n" <<< "$PATH"'
+
+# Shells that don't run under sshd (Rex terminals, started by the long-lived
+# rex server) inherit the server's SSH_AUTH_SOCK, an empty systemd agent.
+# Point them at the forwarded agent that ~/.ssh/rc keeps linked at
+# ~/.ssh/agent.sock, so git can reach GitHub.
+if [[ -z "$SSH_CONNECTION" && -L "$HOME/.ssh/agent.sock" ]]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+fi
 # --- zellij (disabled; sessions are moving to rex) ---
 # Uncomment this and the auto-attach block at the end, and re-add zellij to
 # home.packages in home.nix, to switch back.
